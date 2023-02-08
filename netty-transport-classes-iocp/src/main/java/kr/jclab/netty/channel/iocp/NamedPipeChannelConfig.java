@@ -1,0 +1,44 @@
+package kr.jclab.netty.channel.iocp;
+
+import io.netty.channel.RecvByteBufAllocator;
+
+public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends IocpChannelConfig {
+    private int receiveBufferSize = 1024;
+    private int sendBufferSize = 1024;
+    private int defaultTimeout = 5000;
+
+    NamedPipeChannelConfig(AbstractIocpChannel channel) {
+        super(channel);
+    }
+
+    NamedPipeChannelConfig(AbstractIocpChannel channel, RecvByteBufAllocator recvByteBufAllocator) {
+        super(channel, recvByteBufAllocator);
+    }
+
+    public int getReceiveBufferSize() {
+        return receiveBufferSize;
+    }
+
+    public T setReceiveBufferSize(int receiveBufferSize) {
+        this.receiveBufferSize = receiveBufferSize;
+        return (T) this;
+    }
+
+    public int getSendBufferSize() {
+        return sendBufferSize;
+    }
+
+    public T setSendBufferSize(int sendBufferSize) {
+        this.sendBufferSize = sendBufferSize;
+        return (T) this;
+    }
+
+    public int getDefaultTimeout() {
+        return defaultTimeout;
+    }
+
+    public T setDefaultTimeout(int defaultTimeout) {
+        this.defaultTimeout = defaultTimeout;
+        return (T) this;
+    }
+}
