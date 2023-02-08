@@ -400,6 +400,20 @@ static jint netty_iocp_native_startOverlappedWrite(
     return -((int)dw_err);
 }
 
+static jlong netty_iocp_native_getNamedPipeClientProcessId(
+    JNIEnv* env, jclass clazz,
+    jlong handle
+) {
+    ULONG pid = 0;
+    DWORD dw_err;
+
+    if (GetNamedPipeClientProcessId((HANDLE) handle, &pid)) {
+        return (jlong) pid;
+    }
+    dw_err = GetLastError();
+    return -((int) dw_err);
+}
+
 // JNI Registered Methods End
 
 // JNI Method Registration Table Begin
@@ -434,6 +448,7 @@ static const JNINativeMethod fixed_method_table[] = {
   { "readOverlappedEntry0", "(JLkr/jclab/netty/channel/iocp/OverlappedEntry;)I", netty_iocp_native_readOverlappedEntry },
   { "startOverlappedRead0", "(J)I", netty_iocp_native_startOverlappedRead },
   { "startOverlappedWrite0", "(JI)I", netty_iocp_native_startOverlappedWrite },
+  { "getNamedPipeClientProcessId0", "(J)J", netty_iocp_native_getNamedPipeClientProcessId }
   // static native long createEvent0(long defaultSecurityAttributePointer, boolean manualReset, boolean initialState, String name);
 
 //  { "eventFd", "()I", (void *) netty_iocp_native_eventFd },

@@ -168,6 +168,7 @@ public final class Native {
     static native int overlappedInitialize0(long memory, long eventHandle, long fileHandle, int bufferSize);
     static native int startOverlappedRead0(long overlappedPointer);
     static native int startOverlappedWrite0(long overlappedPointer, int dataSize);
+    static native long getNamedPipeClientProcessId0(long handle);
 
     static int startOverlappedRead(NativeOverlapped overlapped) throws Errors.NativeIoException {
         int rc = startOverlappedRead0(overlapped.memoryAddress());
@@ -181,6 +182,14 @@ public final class Native {
         int rc = startOverlappedWrite0(overlapped.memoryAddress(), dataSize);
         if (rc < 0) {
             throw Errors.newIOException("startOverlappedWrite", rc);
+        }
+        return rc;
+    }
+
+    static long getNamedPipeClientProcessId(WinHandle handle) throws Errors.NativeIoException {
+        long rc = getNamedPipeClientProcessId0(handle.longValue());
+        if (rc < 0) {
+            throw Errors.newIOException("startOverlappedWrite", (int) rc);
         }
         return rc;
     }

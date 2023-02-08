@@ -40,7 +40,8 @@ target_link_libraries(
         ws2_32.lib
 )
 
-if(NOT ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "Win64"))
+message("CMAKE_GENERATOR_PLATFORM : ${CMAKE_GENERATOR_PLATFORM}")
+if ("${CMAKE_GENERATOR_PLATFORM}" MATCHES "(Win64|IA64|x64)")
     set_target_properties(
             netty_transport_native_iocp
             PROPERTIES

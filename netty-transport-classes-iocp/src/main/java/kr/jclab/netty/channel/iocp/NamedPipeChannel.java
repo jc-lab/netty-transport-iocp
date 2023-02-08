@@ -20,6 +20,8 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
     private NativeOverlapped readOverlapped = null;
     private NativeOverlapped writeOverlapped = null;
 
+    private PeerCredentials peerCredentials = null;
+
     private final Runnable flushTask = new Runnable() {
         @Override
         public void run() {
@@ -38,6 +40,7 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
         super(parent, id);
         this.handle = handle;
         this.active = true;
+        this.peerCredentials = new PeerCredentials((int) Native.getNamedPipeClientProcessId(handle));
         prepareWrite();
     }
 
@@ -59,6 +62,10 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
     @Override
     public ChannelMetadata metadata() {
         return METADATA;
+    }
+
+    public PeerCredentials peerCredentials() {
+        return peerCredentials;
     }
 
     @Override
