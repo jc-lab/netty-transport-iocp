@@ -19,6 +19,7 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
         return receiveBufferSize;
     }
 
+    @SuppressWarnings("unchecked")
     public T setReceiveBufferSize(int receiveBufferSize) {
         this.receiveBufferSize = receiveBufferSize;
         return (T) this;
@@ -28,6 +29,7 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
         return sendBufferSize;
     }
 
+    @SuppressWarnings("unchecked")
     public T setSendBufferSize(int sendBufferSize) {
         this.sendBufferSize = sendBufferSize;
         return (T) this;
@@ -37,6 +39,7 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
         return defaultTimeout;
     }
 
+    @SuppressWarnings("unchecked")
     public T setDefaultTimeout(int defaultTimeout) {
         this.defaultTimeout = defaultTimeout;
         return (T) this;

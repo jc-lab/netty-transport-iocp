@@ -1,17 +1,6 @@
 package kr.jclab.netty.channel.iocp;
 
-import io.netty.util.internal.EmptyArrays;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Serial;
-import java.io.Serializable;
-import java.net.ConnectException;
-import java.net.NoRouteToHostException;
-import java.nio.channels.AlreadyConnectedException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.ConnectionPendingException;
-import java.nio.channels.NotYetConnectedException;
 
 /**
  * <strong>Internal usage only!</strong>

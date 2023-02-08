@@ -63,17 +63,24 @@ public class NativeOverlapped {
     }
 
     public ByteBuffer sliceData(int length) {
-        return memory.slice(SIZE_OF_HEADER, length);
+        ByteBuffer newBuffer = memory.slice();
+        newBuffer.position(SIZE_OF_HEADER);
+        newBuffer.limit(SIZE_OF_HEADER + length);
+        return newBuffer;
     }
 
     public int writeData(ByteBuf byteBuf) {
         int available = Math.min(byteBuf.readableBytes(), bufferSize);
         if (byteBuf.hasArray()) {
-            memory.put(SIZE_OF_HEADER, byteBuf.array(), byteBuf.arrayOffset(), available);
+            memory.limit(memory.capacity());
+            memory.position(SIZE_OF_HEADER);
+            memory.put(byteBuf.array(), byteBuf.arrayOffset(), available);
         } else {
             byte[] temp = new byte[available];
             byteBuf.readBytes(temp);
-            memory.put(SIZE_OF_HEADER, temp);
+            memory.limit(memory.capacity());
+            memory.position(SIZE_OF_HEADER);
+            memory.put(temp, 0, temp.length);
         }
         return available;
     }

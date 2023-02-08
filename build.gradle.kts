@@ -2,8 +2,24 @@ plugins {
     id("java")
 }
 
-group = "kr.jclab.netty"
-version = "0.0.1"
+val projectGroup = "kr.jclab.netty"
+val projectVersion = "0.0.1"
+
+group = projectGroup
+version = projectVersion
+
+allprojects {
+    group = projectGroup
+    version = projectVersion
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+
+        withJavadocJar()
+        withSourcesJar()
+    }
+}
 
 repositories {
     mavenCentral()

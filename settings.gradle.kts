@@ -14,10 +14,6 @@ pluginManagement {
     }
 }
 
-rootProject.name = "jvm-application-with-jni-library"
-
-include("jni-library")
-
 rootProject.name = "netty-transport-iocp"
 include("netty-transport-classes-iocp")
 include("netty-transport-native-iocp")
