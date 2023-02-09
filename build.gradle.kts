@@ -3,7 +3,7 @@ plugins {
 }
 
 val projectGroup = "kr.jclab.netty"
-val projectVersion = "0.0.2"
+val projectVersion = "0.0.3"
 
 group = projectGroup
 version = projectVersion
