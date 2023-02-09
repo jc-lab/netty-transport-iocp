@@ -47,7 +47,8 @@ static jfieldID overlappedEntryFileHandleFieldId = NULL;
 static jfieldID overlappedEntryEventHandleFieldId = NULL;
 static jfieldID overlappedEntryBufferSizeFieldId = NULL;
 static jfieldID nativeOverlappedMemoryAddressFieldId = NULL;
-static jfieldID nativeOverlappedNumberOfBytesTransferredFieldId = NULL;
+static jfieldID nativeOverlappedInternalFieldId = NULL;
+static jfieldID nativeOverlappedInternalHighFieldId = NULL;
 
 #define OVERLAPPED_MAGIC 0x0caffe00
 
@@ -114,11 +115,41 @@ static jint fileFlagOverlapped() {
     return (jint) FILE_FLAG_OVERLAPPED;
 }
 
+static jint flagGenericRead() {
+    return (jint) GENERIC_READ;
+}
+
+static jint flagGenericWrite() {
+    return (jint) GENERIC_WRITE;
+}
+
+static jint flagOpenExisting() {
+    return (jint) OPEN_EXISTING;
+}
+
+static jint flagPipeReadmodeMessage() {
+    return (jint) PIPE_READMODE_MESSAGE;
+}
+
+static jint flagPipeReadmodeByte() {
+    return (jint) PIPE_READMODE_BYTE;
+}
+
+static jint errorNotFound() {
+    return (jint) ERROR_NOT_FOUND;
+}
+
 static jlong netty_iocp_native_createIoCompletionPort(
     JNIEnv* env, jclass clazz,
     jlong file_handle, jlong existing_completion_port, jlong completion_key, jint number_of_concurrent_threads
 ) {
-    return (jlong) CreateIoCompletionPort((HANDLE) file_handle, (HANDLE) existing_completion_port, (ULONG_PTR) completion_key, (DWORD) number_of_concurrent_threads);
+    DWORD dw_err;
+    HANDLE handle = CreateIoCompletionPort((HANDLE) file_handle, (HANDLE) existing_completion_port, (ULONG_PTR) completion_key, (DWORD) number_of_concurrent_threads);
+    if (handle) {
+        return (jlong) handle;
+    }
+    dw_err = GetLastError();
+    return -((int) dw_err);
 }
 
 static jint netty_iocp_native_winCloseHandle(
@@ -241,20 +272,20 @@ static jint netty_iocp_native_readOverlappedEntry(
     return 0;
 }
 
-//static jint netty_iocp_native_readNativeOverlapped(
-//    JNIEnv* env, jclass clazz,
-//    jobject target
-//) {
-//    jlong pointer = (*env)->GetLongField(env, target, nativeOverlappedMemoryAddressFieldId);
-//    if (!pointer) {
-//        return 1;
-//    }
-//
-//    netty_iocp_native_overlapped_t *nativeOverlapped = (netty_iocp_native_overlapped_t*) pointer;
-//    (*env)->SetLongField(env, target, nativeOverlappedNumberOfBytesTransferredFieldId, nativeOverlapped->numberOfBytesTransferred);
-//
-//    return 0;
-//}
+static jint netty_iocp_native_readNativeOverlapped(
+    JNIEnv* env, jclass clazz,
+    jobject target
+) {
+    LPOVERLAPPED overlapped = (LPOVERLAPPED)(*env)->GetLongField(env, target, nativeOverlappedMemoryAddressFieldId);
+    if (!overlapped) {
+        return 1;
+    }
+
+    (*env)->SetLongField(env, target, nativeOverlappedInternalFieldId, overlapped->Internal);
+    (*env)->SetLongField(env, target, nativeOverlappedInternalHighFieldId, overlapped->InternalHigh);
+
+    return 0;
+}
 
 static jlong netty_iocp_native_createNamedPipe(
     JNIEnv* env, jclass clazz,
@@ -400,6 +431,19 @@ static jint netty_iocp_native_startOverlappedWrite(
     return -((int)dw_err);
 }
 
+static jint netty_iocp_native_cancelIoEx(
+    JNIEnv* env, jclass clazz,
+    jlong handle,
+    jlong overlappedPointer
+) {
+    DWORD dw_err;
+    if (CancelIoEx((HANDLE) handle, (LPOVERLAPPED) overlappedPointer)) {
+        return 0;
+    }
+    dw_err = GetLastError();
+    return -((int) dw_err);
+}
+
 static jlong netty_iocp_native_getNamedPipeClientProcessId(
     JNIEnv* env, jclass clazz,
     jlong handle
@@ -409,6 +453,55 @@ static jlong netty_iocp_native_getNamedPipeClientProcessId(
 
     if (GetNamedPipeClientProcessId((HANDLE) handle, &pid)) {
         return (jlong) pid;
+    }
+    dw_err = GetLastError();
+    return -((int) dw_err);
+}
+
+static jlong netty_iocp_native_createFile(
+    JNIEnv* env, jclass clazz,
+    jstring name,
+    jint desiredAccess,
+    jint shareMode,
+    jlong securityAttributePointer,
+    jint creationDisposition,
+    jint flagsAndAttributes,
+    jlong templateFilePointer
+) {
+    TCHAR* tstr_name = netty_iocp_util_jstring_to_tstr(env, name);
+    HANDLE handle = CreateFile(
+        tstr_name,
+        (DWORD) desiredAccess,
+        (DWORD) shareMode,
+        (LPSECURITY_ATTRIBUTES) securityAttributePointer,
+        (DWORD) creationDisposition,
+        (DWORD) flagsAndAttributes,
+        (HANDLE) templateFilePointer
+    );
+    DWORD err = GetLastError();
+    free(tstr_name);
+
+    if (handle == INVALID_HANDLE_VALUE) {
+        return -((int) err);
+    }
+
+    return (jlong) handle;
+}
+
+static jint netty_iocp_native_setPipeMessageReadMode0(
+    JNIEnv* env, jclass clazz,
+    jlong handle,
+    jint mode
+) {
+    DWORD dw_mode = (DWORD) mode;
+    DWORD dw_err;
+    if(SetNamedPipeHandleState(
+        (HANDLE) handle,
+        &dw_mode,
+        NULL,
+        NULL
+    )) {
+        return 0;
     }
     dw_err = GetLastError();
     return -((int) dw_err);
@@ -434,6 +527,12 @@ static const JNINativeMethod statically_referenced_fixed_method_table[] = {
   { "fileFlagFirstPipeInstance", "()I", (void *) fileFlagFirstPipeInstance },
   { "fileFlagWriteThrough", "()I", (void *) fileFlagWriteThrough },
   { "fileFlagOverlapped", "()I", (void *) fileFlagOverlapped },
+  { "flagGenericRead", "()I", (void *) flagGenericRead },
+  { "flagGenericWrite", "()I", (void *) flagGenericWrite },
+  { "flagOpenExisting", "()I", (void *) flagOpenExisting },
+  { "flagPipeReadmodeMessage", "()I", (void *) flagPipeReadmodeMessage },
+  { "flagPipeReadmodeByte", "()I", (void *) flagPipeReadmodeByte },
+  { "errorNotFound", "()I", (void *) errorNotFound },
 };
 static const jint statically_referenced_fixed_method_table_size = sizeof(statically_referenced_fixed_method_table) / sizeof(statically_referenced_fixed_method_table[0]);
 static const JNINativeMethod fixed_method_table[] = {
@@ -446,9 +545,13 @@ static const JNINativeMethod fixed_method_table[] = {
   { "overlappedInitialize0", "(JJJI)I", netty_iocp_native_overlappedInitialize },
   { "connectNamedPipe0", "(JJ)I", netty_iocp_native_connectNamedPipe0 },
   { "readOverlappedEntry0", "(JLkr/jclab/netty/channel/iocp/OverlappedEntry;)I", netty_iocp_native_readOverlappedEntry },
+  { "readNativeOverlapped0", "(Lkr/jclab/netty/channel/iocp/NativeOverlapped;)I", netty_iocp_native_readNativeOverlapped },
   { "startOverlappedRead0", "(J)I", netty_iocp_native_startOverlappedRead },
   { "startOverlappedWrite0", "(JI)I", netty_iocp_native_startOverlappedWrite },
-  { "getNamedPipeClientProcessId0", "(J)J", netty_iocp_native_getNamedPipeClientProcessId }
+  { "cancelIoEx0", "(JJ)I", netty_iocp_native_cancelIoEx },
+  { "getNamedPipeClientProcessId0", "(J)J", netty_iocp_native_getNamedPipeClientProcessId },
+  { "createFile0", "(Ljava/lang/String;IIJIIJ)J", netty_iocp_native_createFile },
+  { "setPipeMessageReadMode0", "(JI)I", netty_iocp_native_setPipeMessageReadMode0 },
   // static native long createEvent0(long defaultSecurityAttributePointer, boolean manualReset, boolean initialState, String name);
 
 //  { "eventFd", "()I", (void *) netty_iocp_native_eventFd },
@@ -548,7 +651,8 @@ static jint netty_iocp_native_JNI_OnLoad(JNIEnv* env, const char* packagePrefix)
     NETTY_JNI_UTIL_GET_FIELD(env, javaOverlappedEntryCls, overlappedEntryBufferSizeFieldId, "bufferSize", "I", done);
 
     NETTY_JNI_UTIL_GET_FIELD(env, javaNativeOverlappedCls, nativeOverlappedMemoryAddressFieldId, "memoryAddress", "J", done);
-//    NETTY_JNI_UTIL_GET_FIELD(env, javaNativeOverlappedCls, nativeOverlappedNumberOfBytesTransferredFieldId, "numberOfBytesTransferred", "I", done);
+    NETTY_JNI_UTIL_GET_FIELD(env, javaNativeOverlappedCls, nativeOverlappedInternalFieldId, "internal", "J", done);
+    NETTY_JNI_UTIL_GET_FIELD(env, javaNativeOverlappedCls, nativeOverlappedInternalHighFieldId, "internalHigh", "J", done);
 
     ret = NETTY_JNI_UTIL_JNI_VERSION;
 
@@ -587,7 +691,8 @@ static void netty_iocp_native_JNI_OnUnload(JNIEnv* env) {
     overlappedEntryEventHandleFieldId = NULL;
     overlappedEntryBufferSizeFieldId = NULL;
     nativeOverlappedMemoryAddressFieldId = NULL;
-//    nativeOverlappedNumberOfBytesTransferredFieldId = NULL;
+    nativeOverlappedInternalFieldId = NULL;
+    nativeOverlappedInternalHighFieldId = NULL;
 }
 
 // Invoked by the JVM when statically linked

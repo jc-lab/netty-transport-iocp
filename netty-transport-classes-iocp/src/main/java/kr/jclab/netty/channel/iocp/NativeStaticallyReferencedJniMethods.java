@@ -48,6 +48,12 @@ final class NativeStaticallyReferencedJniMethods {
     static native int fileFlagFirstPipeInstance();
     static native int fileFlagWriteThrough();
     static native int fileFlagOverlapped();
+    static native int flagGenericRead();
+    static native int flagGenericWrite();
+    static native int flagOpenExisting();
+    static native int flagPipeReadmodeMessage();
+    static native int flagPipeReadmodeByte();
+    static native int errorNotFound();
 
     /**
      * Close Handle

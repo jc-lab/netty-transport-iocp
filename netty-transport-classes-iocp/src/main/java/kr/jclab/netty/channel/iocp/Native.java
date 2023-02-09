@@ -41,6 +41,17 @@ public final class Native {
     public static final int IOCP_CONTEXT_TIMER  = 0x00000001;
     public static final int IOCP_CONTEXT_HANDLE = 0x10000000;
 
+    public static final int  PIPE_ACCESS_DUPLEX;
+    public static final int  PIPE_ACCESS_INBOUND;
+    public static final int  PIPE_ACCESS_OUTBOUND;
+    public static final int  FILE_FLAG_OVERLAPPED;
+    public static final int PIPE_READMODE_MESSAGE;
+    public static final int PIPE_READMODE_BYTE;
+    public static final int GENERIC_READ;
+    public static final int GENERIC_WRITE;
+    public static final int OPEN_EXISTING;
+    public static final int ERROR_NOT_FOUND;
+
 
     static {
         Selector selector = null;
@@ -82,6 +93,17 @@ public final class Native {
                 // Just ignore
             }
         }
+
+        PIPE_ACCESS_DUPLEX = NativeStaticallyReferencedJniMethods.pipeAccessDuplex();
+        PIPE_ACCESS_INBOUND = NativeStaticallyReferencedJniMethods.pipeAccessInbound();
+        PIPE_ACCESS_OUTBOUND = NativeStaticallyReferencedJniMethods.pipeAccessOutbound();
+        FILE_FLAG_OVERLAPPED = NativeStaticallyReferencedJniMethods.fileFlagOverlapped();
+        PIPE_READMODE_BYTE = NativeStaticallyReferencedJniMethods.flagPipeReadmodeByte();
+        PIPE_READMODE_MESSAGE = NativeStaticallyReferencedJniMethods.flagPipeReadmodeMessage();
+        GENERIC_READ = NativeStaticallyReferencedJniMethods.flagGenericRead();
+        GENERIC_WRITE = NativeStaticallyReferencedJniMethods.flagGenericWrite();
+        OPEN_EXISTING = NativeStaticallyReferencedJniMethods.flagOpenExisting();
+        ERROR_NOT_FOUND = NativeStaticallyReferencedJniMethods.errorNotFound();
     }
 
     private static void loadNativeLibrary() {
@@ -128,6 +150,14 @@ public final class Native {
         }
     }
 
+    public static WinHandle createFile(String fileName, int desiredAccess, int shareMode, long securityAttributesPointer, int creationDisposition, int flagsAndAttributes, long templateFile) throws Errors.NativeIoException {
+        long handle = createFile0(fileName, desiredAccess, shareMode, securityAttributesPointer, creationDisposition, flagsAndAttributes, templateFile);
+        if (handle <= 0) {
+            throw Errors.newIOException("createEvent", (int) handle);
+        }
+        return new WinHandle(handle);
+    }
+
     static int iocpWait(WinHandle iocpHandle, OverlappedEntryArray events, boolean immediatePoll) throws IOException {
         return iocpWait(iocpHandle, events, immediatePoll ? 0 : -1);
     }
@@ -155,7 +185,7 @@ public final class Native {
     private static native long createIoCompletionPort0(long handle, long existingCompletionPort, long context, int numberOfConcurrentThreads) throws ChannelException;
 
     static native int readOverlappedEntry0(long pointer, OverlappedEntry entry);
-    static native int readNativeOverlapped(NativeOverlapped entry);
+    static native int readNativeOverlapped0(NativeOverlapped entry);
 
     private static native int getQueuedCompletionStatusExWait(long handle, long entries, int count, int timeout);
     private static native int getQueuedCompletionStatusExBusyWait(long handle, long entries, int count);
@@ -168,7 +198,10 @@ public final class Native {
     static native int overlappedInitialize0(long memory, long eventHandle, long fileHandle, int bufferSize);
     static native int startOverlappedRead0(long overlappedPointer);
     static native int startOverlappedWrite0(long overlappedPointer, int dataSize);
+    static native int cancelIoEx0(long handle, long overlappedPointer);
     static native long getNamedPipeClientProcessId0(long handle);
+    static native long createFile0(String fileName, int desiredAccess, int shareMode, long securityAttributesPointer, int creationDisposition, int flagsAndAttributes, long templateFile);
+    static native int setPipeMessageReadMode0(long handle, int mode);
 
     static int startOverlappedRead(NativeOverlapped overlapped) throws Errors.NativeIoException {
         int rc = startOverlappedRead0(overlapped.memoryAddress());
@@ -192,5 +225,12 @@ public final class Native {
             throw Errors.newIOException("startOverlappedWrite", (int) rc);
         }
         return rc;
+    }
+
+    static void setPipeMessageReadMode(WinHandle handle, int mode) throws Errors.NativeIoException {
+        long rc = setPipeMessageReadMode0(handle.longValue(), mode);
+        if (rc < 0) {
+            throw Errors.newIOException("setPipeMessageReadMode", (int) rc);
+        }
     }
 }

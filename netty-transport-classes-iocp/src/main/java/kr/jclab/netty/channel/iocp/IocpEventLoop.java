@@ -476,7 +476,7 @@ class IocpEventLoop extends SingleThreadEventLoop {
                 pendingWakeup = false;
             } else if (entry.getCompletionKey() == Native.IOCP_CONTEXT_HANDLE) {
                 if (!entry.isOverlappedValid()) {
-                    logger.warn("invalid overlapped object", entry);
+                    logger.warn("invalid overlapped object: " + entry.getOverlappedPointer());
                     continue;
                 }
 

@@ -4,10 +4,11 @@ import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * typedef struct _netty_iocp_native_overlapped {
- *     OVERLAPPED overlapped;
+ *     c overlapped;
  *     HANDLE     fileHandle;
  *     DWORD      bufferSize;
  * } netty_iocp_native_overlapped_t;
@@ -21,6 +22,10 @@ public class NativeOverlapped {
     private long memoryAddress;
 
     private final WinHandle event;
+    private AtomicInteger refCount = new AtomicInteger(1);
+
+    private long internal;
+    private long internalHigh;
 
 
     public NativeOverlapped(int bufferSize) throws Errors.NativeIoException {
@@ -35,6 +40,8 @@ public class NativeOverlapped {
         memoryAddress = Buffer.memoryAddress(memory);
         event = Native.createEvent(true, false);
         Native.overlappedInitialize0(memoryAddress, event.longValue(), (handle != null) ? handle.longValue() : 0, bufferSize);
+
+        MemoryLeakDetector.put(memoryAddress, this);
     }
 
     public void initialize(AbstractWinHandle handle) {
@@ -49,8 +56,28 @@ public class NativeOverlapped {
         return memory;
     }
 
-    public void free() {
+    public void refInc() {
+        refCount.incrementAndGet();
+    }
+
+    public void refDec() {
+        if (refCount.decrementAndGet() <= 0) {
+            free();
+        }
+    }
+
+    public int refCount() {
+        return refCount.get();
+    }
+
+    private void free() {
         if (memoryAddress != 0) {
+            // remove magic
+            memory.position(0);
+            memory.limit(memory.capacity());
+            memory.putInt(0);
+
+            MemoryLeakDetector.remove(memoryAddress);
             Buffer.free(memory);
             memoryAddress = 0;
         }

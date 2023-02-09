@@ -34,6 +34,7 @@ public final class OverlappedEntryArray {
         this.length = length;
         memory = Buffer.allocateDirectWithNativeOrder(calculateBufferCapacity(length));
         memoryAddress = Buffer.memoryAddress(memory);
+        MemoryLeakDetector.put(memoryAddress, this);
     }
 
     /**
@@ -60,16 +61,21 @@ public final class OverlappedEntryArray {
         // There is no need to preserve what was in the memory before.
         ByteBuffer buffer = Buffer.allocateDirectWithNativeOrder(calculateBufferCapacity(length));
         Buffer.free(memory);
+        MemoryLeakDetector.remove(memoryAddress);
         memory = buffer;
         memoryAddress = Buffer.memoryAddress(buffer);
+        MemoryLeakDetector.put(memoryAddress, this);
     }
 
     /**
      * Free this {@link OverlappedEntryArray}. Any usage after calling this method may segfault the JVM!
      */
     void free() {
-        Buffer.free(memory);
-        memoryAddress = 0;
+        if (memoryAddress != 0) {
+            MemoryLeakDetector.remove(memoryAddress);
+            Buffer.free(memory);
+            memoryAddress = 0;
+        }
     }
 
     public OverlappedEntry getEntry(int index) {

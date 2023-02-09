@@ -14,8 +14,6 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
 
     private final NamedPipeServerChannelConfig config;
 
-    private boolean closed = false;
-
     private NamedPipeSocketAddress localAddress = null;
     private WinHandle pendingConnectHandle = null;
     private boolean handleRegistered = false;
@@ -66,24 +64,13 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
     }
 
     @Override
-    protected void doClose() throws Exception {
-        closed = true;
-        super.doClose();
-    }
-
-    @Override
     public NamedPipeServerChannelConfig config() {
         return config;
     }
 
     @Override
-    public boolean isOpen() {
-        return !closed;
-    }
-
-    @Override
     public boolean isActive() {
-        return super.isActive() && (pendingConnectHandle != null);
+        return active && (pendingConnectHandle != null);
     }
 
     @Override
@@ -102,14 +89,20 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
 
     @Override
     protected void doCloseHandle() throws IOException {
-        try {
-            if (pendingConnectHandle != null) {
+        if (pendingConnectHandle != null) {
+            try {
+                if (connectOverlapped != null) {
+                    int rc = Native.cancelIoEx0(pendingConnectHandle.longValue(), connectOverlapped.memoryAddress());
+                    if (rc == 0) {
+                        connectOverlapped.refDec();
+                    }
+                }
                 pendingConnectHandle.close();
+            } catch (Exception e) {
             }
-        } catch (Exception e) {
         }
         if (connectOverlapped != null) {
-            connectOverlapped.free();
+            connectOverlapped.refDec();
             connectOverlapped = null;
         }
     }
@@ -120,6 +113,7 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
             logger.warn("invalid pointer: ", entry.getOverlappedPointer() + " != " + connectOverlapped.memoryAddress());
             return ;
         }
+        connectOverlapped.refDec();
 
         NamedPipeChannel namedPipeChannel = new NamedPipeChannel(this, DefaultChannelId.newInstance(), pendingConnectHandle);
         ((IocpEventLoop) eventLoop()).iocpChangeHandler(pendingConnectHandle, namedPipeChannel);
@@ -157,8 +151,10 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
 
     private void startConnect() throws IOException {
         connectOverlapped.initialize(pendingConnectHandle);
+        connectOverlapped.refInc();
         int result = Native.connectNamedPipe0(pendingConnectHandle.longValue(), connectOverlapped.memoryAddress());
         if (result < 0) {
+            connectOverlapped.refDec();
             throw Errors.newIOException("connectNamedPipe", result);
         }
     }

@@ -1,14 +1,10 @@
 package kr.jclab.netty.channel.iocp;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.util.concurrent.Future;
 
 import java.io.IOException;
-import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
-
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
 public abstract class AbstractIocpChannel extends AbstractChannel {
     /**
@@ -20,7 +16,8 @@ public abstract class AbstractIocpChannel extends AbstractChannel {
 
     boolean inputClosedSeenErrorOnRead;
 
-    protected volatile boolean active;
+    protected volatile boolean closed = false;
+    protected volatile boolean active = false;
 
     protected AbstractIocpChannel(Channel parent) {
         super(parent);
@@ -39,8 +36,15 @@ public abstract class AbstractIocpChannel extends AbstractChannel {
     }
 
     @Override
+    public boolean isOpen() {
+        return !closed;
+    }
+
+    @Override
     public boolean isActive() {
-        return active;
+        AbstractWinHandle handle = handle();
+        boolean handleIsOpen = (handle != null) && handle.isOpen();
+        return active && handleIsOpen;
     }
 
     @Override
@@ -60,6 +64,7 @@ public abstract class AbstractIocpChannel extends AbstractChannel {
 
     @Override
     protected void doClose() throws Exception {
+        closed = true;
         active = false;
         // Even if we allow half closed sockets we should give up on reading. Otherwise we may allow a read attempt on a
         // socket which has not even been connected yet. This has been observed to block during unit tests.
@@ -102,6 +107,13 @@ public abstract class AbstractIocpChannel extends AbstractChannel {
         } finally {
             doCloseHandle();
         }
+    }
+
+    protected final void closeIfClosed() {
+        if (isOpen()) {
+            return;
+        }
+        close(voidPromise());
     }
 
     public abstract AbstractWinHandle handle();
