@@ -104,7 +104,7 @@ public class NativeOverlapped {
             memory.put(byteBuf.array(), byteBuf.arrayOffset(), available);
         } else {
             byte[] temp = new byte[available];
-            byteBuf.readBytes(temp);
+            byteBuf.getBytes(byteBuf.readerIndex(), temp);
             memory.limit(memory.capacity());
             memory.position(SIZE_OF_HEADER);
             memory.put(temp, 0, temp.length);
