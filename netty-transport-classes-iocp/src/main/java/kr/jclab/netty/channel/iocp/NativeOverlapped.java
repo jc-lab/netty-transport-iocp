@@ -89,10 +89,10 @@ public class NativeOverlapped {
         }
     }
 
-    public ByteBuffer sliceData(int length) {
+    public void readData(ByteBuf dest, int length) {
         memory.limit(SIZE_OF_HEADER + length);
         memory.position(SIZE_OF_HEADER);
-        return memory.slice();
+        dest.writeBytes(memory);
     }
 
     public int writeData(ByteBuf byteBuf) {

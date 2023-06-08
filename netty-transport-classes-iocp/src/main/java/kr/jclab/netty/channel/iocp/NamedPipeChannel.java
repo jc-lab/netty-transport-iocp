@@ -1,7 +1,7 @@
 package kr.jclab.netty.channel.iocp;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -79,10 +79,11 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
             readOverlapped.refDec();
             int size = entry.getNumberOfBytesTransferred();
             if (size > 0) {
-                ByteBuffer sliced = readOverlapped.sliceData(size);
+                ByteBuf buffer = this.config.getAllocator().buffer(size);
+                readOverlapped.readData(buffer, size);
 
                 try {
-                    pipeline.fireChannelRead(Unpooled.wrappedBuffer(sliced));
+                    pipeline.fireChannelRead(buffer);
                     pipeline.fireChannelReadComplete();
                 } catch (Throwable e) {
                     pipeline.fireChannelReadComplete();
