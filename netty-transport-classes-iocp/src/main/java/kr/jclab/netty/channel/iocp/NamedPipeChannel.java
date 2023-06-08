@@ -70,15 +70,25 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
         return peerCredentials;
     }
 
+    int readCount = 0;
     @Override
     protected void handleEvent(OverlappedEntry entry) throws Exception {
         assert eventLoop().inEventLoop();
+        ChannelPipeline pipeline = pipeline();
         if (readOverlapped != null && readOverlapped.memoryAddress() == entry.getOverlappedPointer()) {
             readOverlapped.refDec();
             int size = entry.getNumberOfBytesTransferred();
             if (size > 0) {
                 ByteBuffer sliced = readOverlapped.sliceData(size);
-                pipeline().fireChannelRead(Unpooled.wrappedBuffer(sliced));
+
+                try {
+                    pipeline.fireChannelRead(Unpooled.wrappedBuffer(sliced));
+                    pipeline.fireChannelReadComplete();
+                } catch (Throwable e) {
+                    pipeline.fireChannelReadComplete();
+                    pipeline.fireExceptionCaught(e);
+                }
+
                 startRead();
             } else {
                 unsafe().close(voidPromise());
@@ -88,6 +98,16 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
             eventLoop().execute(flushTask);
         }
     }
+
+    public static ByteBuffer clone(ByteBuffer original) {
+        ByteBuffer clone = ByteBuffer.allocate(original.capacity());
+        original.rewind();//copy from the beginning
+        clone.put(original);
+        original.rewind();
+        clone.flip();
+        return clone;
+    }
+
 
     @Override
     protected AbstractUnsafe newUnsafe() {
@@ -118,6 +138,9 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
     }
 
     private void startRead() throws Errors.NativeIoException {
+         if (readOverlapped.refCount() > 1) {
+            return ;
+        }
         try {
             readOverlapped.refInc();
             Native.startOverlappedRead(readOverlapped);
@@ -129,21 +152,38 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
 
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
-        final int msgCount = in.size();
-        if (msgCount > 0) {
-            ByteBuf buffer = (ByteBuf) in.current();
-            int bytes = writeOverlapped.writeData(buffer);
-            try {
-                writeOverlapped.refInc();
-                Native.startOverlappedWrite(writeOverlapped, bytes);
-            } catch (Exception e) {
-                writeOverlapped.refDec();
-                throw e;
+        boolean written = false;
+        while (!written && in.size() > 0) {
+            if (writeOverlapped.refCount() > 1) {
+                return ;
             }
-            in.removeBytes(bytes);
-        } else {
-            eventLoop().execute(flushTask);
+
+            ByteBuf current = (ByteBuf) in.current();
+            written = doWriteInternal(in, current);
         }
+    }
+
+    private boolean doWriteInternal(ChannelOutboundBuffer in, ByteBuf current) throws Exception {
+        if (!current.isReadable()) {
+            in.remove();
+            return false;
+        }
+
+        int bytes = writeOverlapped.writeData(current);
+        try {
+            writeOverlapped.refInc();
+            Native.startOverlappedWrite(writeOverlapped, bytes);
+        } catch (Exception e) {
+            writeOverlapped.refDec();
+            throw e;
+        }
+
+        in.progress(bytes);
+        if (!current.isReadable()) {
+            in.remove();
+        }
+
+        return true;
     }
 
     @Override
