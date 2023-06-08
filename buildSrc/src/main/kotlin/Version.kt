@@ -23,5 +23,6 @@ fun getVersionFromGit(): String {
 }
 
 object Version {
+    val NETTY by lazy { "4.1.87.Final" }
     val PROJECT by lazy { getVersionFromGit() }
 }

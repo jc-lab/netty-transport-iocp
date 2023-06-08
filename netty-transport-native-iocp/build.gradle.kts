@@ -32,8 +32,8 @@ dependencies {
     // https://mvnrepository.com/artifact/io.netty/netty-jni-util
     nativeDep("io.netty:netty-jni-util:0.0.6.Final:sources")
 
-    testImplementation("io.netty:netty-buffer:4.1.87.Final")
-    testImplementation("io.netty:netty-transport:4.1.87.Final")
+    testImplementation("io.netty:netty-buffer:${Version.NETTY}")
+    testImplementation("io.netty:netty-transport:${Version.NETTY}")
     testImplementation(project(":netty-transport-classes-iocp"))
 }
 

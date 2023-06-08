@@ -20,8 +20,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
 
-    compileOnly("io.netty:netty-buffer:4.1.87.Final")
-    compileOnly("io.netty:netty-transport:4.1.87.Final")
+    compileOnly("io.netty:netty-buffer:${Version.NETTY}")
+    compileOnly("io.netty:netty-transport:${Version.NETTY}")
 }
 
 tasks.getByName<Test>("test") {
