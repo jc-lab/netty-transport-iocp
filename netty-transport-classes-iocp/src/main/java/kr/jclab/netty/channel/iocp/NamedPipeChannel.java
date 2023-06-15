@@ -245,7 +245,9 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
                 Native.FILE_FLAG_OVERLAPPED,
                 0
         );
-        Native.setPipeMessageReadMode(connectedHandle, Native.PIPE_READMODE_MESSAGE);
+        if (config.isMessageMode()) {
+            Native.setPipeMessageReadMode(connectedHandle, Native.PIPE_READMODE_MESSAGE);
+        }
         this.handle = connectedHandle;
 
         prepareWrite();

@@ -6,6 +6,7 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
     private int receiveBufferSize = 1024;
     private int sendBufferSize = 1024;
     private int defaultTimeout = 5000;
+    private boolean messageMode = false; // use PIPE_READMODE_MESSAGE
 
     NamedPipeChannelConfig(AbstractIocpChannel channel) {
         super(channel);
@@ -42,6 +43,16 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
     @SuppressWarnings("unchecked")
     public T setDefaultTimeout(int defaultTimeout) {
         this.defaultTimeout = defaultTimeout;
+        return (T) this;
+    }
+
+    public boolean isMessageMode() {
+        return messageMode;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T setMessageMode(boolean messageMode) {
+        this.messageMode = messageMode;
         return (T) this;
     }
 }
