@@ -1,0 +1,20 @@
+name: Test
+on:
+  push: {}
+jobs:
+  java-build:
+    runs-on: windows-latest
+    steps:
+      - name: Set Environment Variables
+        run: |
+          echo "runner_arch=$(uname -m)" >> $GITHUB_ENV
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+          cache: 'gradle'
+      - name: Build
+        run: |
+          .\gradlew.bat build test
