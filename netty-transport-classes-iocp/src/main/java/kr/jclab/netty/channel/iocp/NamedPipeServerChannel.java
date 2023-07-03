@@ -7,6 +7,8 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.io.IOException;
 import java.net.SocketAddress;
 
+import static kr.jclab.netty.channel.iocp.IocpChannelOption.SECURITY_ATTRIBUTES;
+
 public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements ServerChannel {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NamedPipeServerChannel.class);
     private static final int FILE_FLAG_FIRST_PIPE_INSTANCE = NativeStaticallyReferencedJniMethods.fileFlagFirstPipeInstance();
@@ -105,6 +107,11 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
             connectOverlapped.refDec();
             connectOverlapped = null;
         }
+
+        NativePointer securityAttributes = this.config.getOption(SECURITY_ATTRIBUTES);
+        if (securityAttributes != null) {
+            securityAttributes.refDec();
+        }
     }
 
     @Override
@@ -128,6 +135,11 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
     }
 
     private void createListenPipe() throws IOException {
+        NativePointer securityAttributes = this.config.getOption(SECURITY_ATTRIBUTES);
+        long securityAttributesPointer = 0;
+        if (securityAttributes != null) {
+            securityAttributesPointer = securityAttributes.getPointer();
+        }
         long handleValue = Native.createNamedPipe0(
                 localAddress.getName(),
                 this.config.isFlagFirstPipeInstance() ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0,
@@ -135,7 +147,7 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
                 this.config.getSendBufferSize(),
                 this.config.getReceiveBufferSize(),
                 this.config.getDefaultTimeout(),
-                0
+                securityAttributesPointer
         );
         if (handleValue < 0) {
             throw Errors.newIOException("createNamedPipe0", (int) handleValue);
