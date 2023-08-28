@@ -71,6 +71,7 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
     }
 
     int readCount = 0;
+
     @Override
     protected void handleEvent(OverlappedEntry entry) throws Exception {
         assert eventLoop().inEventLoop();
@@ -90,7 +91,9 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
                     pipeline.fireExceptionCaught(e);
                 }
 
-                startRead();
+                if (isOpen()) {
+                    startRead();
+                }
             } else {
                 unsafe().close(voidPromise());
             }
