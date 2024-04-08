@@ -117,7 +117,7 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
     @Override
     protected void handleEvent(OverlappedEntry entry) throws IOException {
         if (connectOverlapped == null) {
-            logger.warn("invalid pointer: connectOverlapped=null, overlappedPointer=", entry.getOverlappedPointer());
+            logger.warn("invalid pointer: connectOverlapped=null, overlappedPointer=" + entry.getOverlappedPointer());
             return ;
         }
 
@@ -133,7 +133,7 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
 
         if (config.isFlagFirstPipeInstance()) {
             pendingConnectHandle = null;
-        } else {
+        } else if (isOpen()) {
             createListenPipe();
             startConnect();
         }
