@@ -7,6 +7,7 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
     private int sendBufferSize = 1024;
     private int defaultTimeout = 5000;
     private boolean messageMode = false; // use PIPE_READMODE_MESSAGE
+    private int maxBusyRetries = 5;
 
     NamedPipeChannelConfig(AbstractIocpChannel channel) {
         super(channel);
@@ -53,6 +54,16 @@ public class NamedPipeChannelConfig<T extends NamedPipeChannelConfig<T>> extends
     @SuppressWarnings("unchecked")
     public T setMessageMode(boolean messageMode) {
         this.messageMode = messageMode;
+        return (T) this;
+    }
+
+    public int getMaxBusyRetries() {
+        return maxBusyRetries;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T setMaxBusyRetries(int maxBusyRetries) {
+        this.maxBusyRetries = maxBusyRetries;
         return (T) this;
     }
 }

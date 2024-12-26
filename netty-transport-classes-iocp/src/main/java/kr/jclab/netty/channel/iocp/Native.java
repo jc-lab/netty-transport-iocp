@@ -153,7 +153,7 @@ public final class Native {
     public static WinHandle createFile(String fileName, int desiredAccess, int shareMode, long securityAttributesPointer, int creationDisposition, int flagsAndAttributes, long templateFile) throws Errors.NativeIoException {
         long handle = createFile0(fileName, desiredAccess, shareMode, securityAttributesPointer, creationDisposition, flagsAndAttributes, templateFile);
         if (handle <= 0) {
-            throw Errors.newIOException("createEvent", (int) handle);
+            throw Errors.newIOException("createFile", (int) handle);
         }
         return new WinHandle(handle);
     }

@@ -1,7 +1,6 @@
 package kr.jclab.netty.channel.iocp;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -12,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AlreadyConnectedException;
 import java.nio.channels.ConnectionPendingException;
 import java.nio.channels.UnresolvedAddressException;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
@@ -37,6 +37,9 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
 
     private NamedPipeSocketAddress requestedRemoteAddress = null;
     private NamedPipeSocketAddress remoteAddress = null;
+
+    private int connectRetryCount = 0;
+    private ScheduledFuture<?> deferredConnectFuture = null;
 
 
     public NamedPipeChannel() {
@@ -69,8 +72,6 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
     public PeerCredentials peerCredentials() {
         return peerCredentials;
     }
-
-    int readCount = 0;
 
     @Override
     protected void handleEvent(OverlappedEntry entry) throws Exception {
@@ -226,7 +227,7 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
         }
     }
 
-    private boolean doConnect(SocketAddress remoteAddress, SocketAddress localAddress) throws IOException {
+    private boolean doConnect(SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise, boolean wasActive) throws IOException {
         if (!(remoteAddress instanceof NamedPipeSocketAddress)) {
             throw new UnresolvedAddressException();
         }
@@ -236,32 +237,80 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
             throw new AlreadyConnectedException();
         }
 
-        NamedPipeSocketAddress remoteNamedPipeAddress = (NamedPipeSocketAddress) remoteAddress;
-        requestedRemoteAddress = remoteNamedPipeAddress;
+        requestedRemoteAddress = (NamedPipeSocketAddress) remoteAddress;
 
-        WinHandle connectedHandle = Native.createFile(
-                remoteNamedPipeAddress.getName(),
-                Native.GENERIC_READ | Native.GENERIC_WRITE,
-                0,
-                0,
-                Native.OPEN_EXISTING,
-                Native.FILE_FLAG_OVERLAPPED,
-                0
-        );
-        if (config.isMessageMode()) {
-            Native.setPipeMessageReadMode(connectedHandle, Native.PIPE_READMODE_MESSAGE);
+        promise.addListener((f) -> {
+           if (!f.isSuccess() && f.isCancelled()) {
+               ScheduledFuture<?> future = deferredConnectFuture;
+               deferredConnectFuture = null;
+               if (future != null) {
+                   future.cancel(false);
+               }
+           }
+        });
+        return connectRetryable(promise, wasActive);
+    }
+
+    private boolean connectRetryable(ChannelPromise promise, boolean wasActive) {
+        try {
+            WinHandle connectedHandle = Native.createFile(
+                    requestedRemoteAddress.getName(),
+                    Native.GENERIC_READ | Native.GENERIC_WRITE,
+                    0,
+                    0,
+                    Native.OPEN_EXISTING,
+                    Native.FILE_FLAG_OVERLAPPED,
+                    0
+            );
+            if (config.isMessageMode()) {
+                Native.setPipeMessageReadMode(connectedHandle, Native.PIPE_READMODE_MESSAGE);
+            }
+            this.handle = connectedHandle;
+
+            prepareWrite();
+            ((IocpEventLoop) eventLoop()).iocpRegister(handle, this);
+        } catch (Errors.NativeIoException e) {
+            if (e.getCode() == -231) {
+                // pipe is busy
+
+                if (connectRetryCount < config.getMaxBusyRetries()) {
+                    // RETRY
+                    connectRetryCount++;
+                    connectRetryAfter(promise, wasActive, 100);
+                    return false;
+                } else {
+                    fulfillConnectPromise(promise, new Errors.PipeBusyException(e));
+                    return true;
+                }
+            }
+
+            fulfillConnectPromise(promise, e);
+            return true;
+        } catch (Exception e) {
+            fulfillConnectPromise(promise, e);
+            return true;
         }
-        this.handle = connectedHandle;
 
-        prepareWrite();
-        ((IocpEventLoop) eventLoop()).iocpRegister(handle, this);
+        finishConnect();
+        fulfillConnectPromise(promise, wasActive);
 
         return true;
+    }
+
+    private void connectRetryAfter(ChannelPromise promise, boolean wasActive, int delayMs) {
+        deferredConnectFuture = eventLoop().schedule(() -> {
+            try {
+                connectRetryable(promise, wasActive);
+            } catch (Exception e2) {
+                fulfillConnectPromise(promise, e2);
+            }
+        }, delayMs, TimeUnit.MILLISECONDS);
     }
 
     private void finishConnect() {
         remoteAddress = requestedRemoteAddress;
         requestedRemoteAddress = null;
+        deferredConnectFuture = null;
     }
 
     private void fulfillConnectPromise(ChannelPromise promise, boolean wasActive) {
@@ -314,12 +363,8 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
                 }
 
                 boolean wasActive = isActive();
-                if (doConnect(remoteAddress, localAddress)) {
-                    finishConnect();
-                    fulfillConnectPromise(promise, wasActive);
-                } else {
-                    connectPromise = promise;
-
+                connectPromise = promise;
+                if (!doConnect(remoteAddress, localAddress, promise, wasActive)) {
                     // Schedule connect timeout.
                     int connectTimeoutMillis = config().getConnectTimeoutMillis();
                     if (connectTimeoutMillis > 0) {

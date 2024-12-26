@@ -35,21 +35,27 @@ public final class Errors {
     public static final class NativeIoException extends IOException {
         private static final long serialVersionUID = -835244428854019171L;
 
-        private final int expectedErr;
+        private final String method;
+        private final int code;
         private final boolean fillInStackTrace;
 
-        public NativeIoException(String method, int expectedErr) {
-            this(method, expectedErr, true);
+        public NativeIoException(String method, int code) {
+            this(method, code, true);
         }
 
-        public NativeIoException(String method, int expectedErr, boolean fillInStackTrace) {
-            super(method + "(..) failed: " + expectedErr);
-            this.expectedErr = expectedErr;
+        public NativeIoException(String method, int code, boolean fillInStackTrace) {
+            super(method + "(..) failed: " + code);
+            this.method = method;
+            this.code = code;
             this.fillInStackTrace = fillInStackTrace;
         }
 
-        public int expectedErr() {
-            return expectedErr;
+        public String getMethod() {
+            return method;
+        }
+
+        public int getCode() {
+            return code;
         }
 
         @Override
@@ -58,6 +64,12 @@ public final class Errors {
                 return super.fillInStackTrace();
             }
             return this;
+        }
+    }
+
+    public static class PipeBusyException extends IOException {
+        public PipeBusyException(Throwable cause) {
+            super(cause);
         }
     }
 
