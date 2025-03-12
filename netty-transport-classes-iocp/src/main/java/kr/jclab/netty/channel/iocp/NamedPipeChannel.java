@@ -91,10 +91,6 @@ public class NamedPipeChannel extends AbstractIocpChannel implements Channel {
                     pipeline.fireChannelReadComplete();
                     pipeline.fireExceptionCaught(e);
                 }
-
-                if (isOpen()) {
-                    startRead();
-                }
             } else {
                 unsafe().close(voidPromise());
             }
