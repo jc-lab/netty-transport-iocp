@@ -127,16 +127,7 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
         }
         connectOverlapped.refDec();
 
-        NamedPipeChannel namedPipeChannel = new NamedPipeChannel(this, DefaultChannelId.newInstance(), pendingConnectHandle);
-        ((IocpEventLoop) eventLoop()).iocpChangeHandler(pendingConnectHandle, namedPipeChannel);
-        this.pipeline().fireChannelRead(namedPipeChannel);
-
-        if (config.isFlagFirstPipeInstance()) {
-            pendingConnectHandle = null;
-        } else if (isOpen()) {
-            createListenPipe();
-            startConnect();
-        }
+        handleConnect();
     }
 
     private void createListenPipe() throws IOException {
@@ -173,6 +164,22 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
         if (result < 0) {
             connectOverlapped.refDec();
             throw Errors.newIOException("connectNamedPipe", result);
+        } else if (result == 1) {
+            // immediately connected
+            handleConnect();
+        }
+    }
+
+    private void handleConnect() throws IOException {
+        NamedPipeChannel namedPipeChannel = new NamedPipeChannel(this, DefaultChannelId.newInstance(), pendingConnectHandle);
+        ((IocpEventLoop) eventLoop()).iocpChangeHandler(pendingConnectHandle, namedPipeChannel);
+        this.pipeline().fireChannelRead(namedPipeChannel);
+
+        if (config.isFlagFirstPipeInstance()) {
+            pendingConnectHandle = null;
+        } else if (isOpen()) {
+            createListenPipe();
+            startConnect();
         }
     }
 

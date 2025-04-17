@@ -365,7 +365,7 @@ static jint netty_iocp_native_connectNamedPipe0(
             return 0;
         case ERROR_PIPE_CONNECTED:
             SetEvent(lpoverlapped->hEvent);
-            return 0;
+            return 1;
     }
     return -((int) last_error);
 }

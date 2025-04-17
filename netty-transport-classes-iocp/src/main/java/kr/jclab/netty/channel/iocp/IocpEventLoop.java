@@ -489,7 +489,7 @@ class IocpEventLoop extends SingleThreadEventLoop {
                 try {
                     channel.handleEvent(entry);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error("unhandled exception in handleEvent", e);
                 }
             }
         }
