@@ -15,6 +15,18 @@ jobs:
           distribution: 'zulu'
           java-version: '11'
           cache: 'gradle'
+      - name: Set up Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build native library x86_64
+        run: |
+          cd netty-transport-native-iocp
+          .\build-native.bat x86_64
+      - name: Build native library x86_32
+        run: |
+          cd netty-transport-native-iocp
+          .\build-native.bat x86_32
       - name: Build
         run: |
           .\gradlew.bat build test

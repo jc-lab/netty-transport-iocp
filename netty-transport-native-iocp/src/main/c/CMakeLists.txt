@@ -6,11 +6,13 @@ if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW)
 endif()
 
-project("netty-transport-native-iocp")
+project("netty-transport-native-iocp" LANGUAGES C)
 
-# jni.include.dir
-SET(JNI_INCLUDE_DIR "C:/Users/joseph/.jdks/azul-15.0.9/include/" CACHE STRING "jni path")
-# SET(NETTY_JNI_UTIL_DIR "" CACHE STRING "netty jni util")
+# Find Java if JNI_INCLUDE_DIR is not defined
+if(NOT DEFINED JNI_INCLUDE_DIR)
+  find_package(JNI REQUIRED)
+  set(JNI_INCLUDE_DIR ${JAVA_INCLUDE_PATH})
+endif()
 
 add_library(
         netty_transport_native_iocp
