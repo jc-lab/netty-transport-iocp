@@ -46,3 +46,5 @@ COPY /Y RelWithDebInfo\netty_transport_native_iocp_%ARCH%.dll %PROJECT_DIR%\src\
 COPY /Y RelWithDebInfo\netty_transport_native_iocp_%ARCH%.pdb %PROJECT_DIR%\src\main\debug\
 
 POPD
+
+exit /b 0
