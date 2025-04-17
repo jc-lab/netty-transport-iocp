@@ -32,7 +32,7 @@ if %EXIT_CODE% neq 0 (
   exit /b %EXIT_CODE%
 )
 
-cmake --build . --config RelWithDebInfo -DJNI_INCLUDE_DIR="%JNI_INCLUDE_DIR%"
+cmake --build . --config RelWithDebInfo
 set EXIT_CODE=%errorlevel%
 if %EXIT_CODE% neq 0 (
   POPD
