@@ -165,6 +165,8 @@ public class NamedPipeServerChannel extends AbstractNamedPipeChannel implements 
             connectOverlapped.refDec();
             throw Errors.newIOException("connectNamedPipe", result);
         } else if (result == 1) {
+            connectOverlapped.refDec();
+
             // immediately connected
             handleConnect();
         }

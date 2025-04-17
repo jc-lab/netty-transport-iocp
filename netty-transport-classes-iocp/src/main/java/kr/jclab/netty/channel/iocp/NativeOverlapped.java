@@ -1,6 +1,7 @@
 package kr.jclab.netty.channel.iocp;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.internal.ObjectUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,7 +27,6 @@ public class NativeOverlapped {
 
     private long internal;
     private long internalHigh;
-
 
     public NativeOverlapped(int bufferSize) throws Errors.NativeIoException {
         this(null, bufferSize);
@@ -61,7 +61,9 @@ public class NativeOverlapped {
     }
 
     public void refDec() {
-        if (refCount.decrementAndGet() <= 0) {
+        int newRefCount = refCount.decrementAndGet();
+        ObjectUtil.checkPositiveOrZero(newRefCount, "newRefCount");
+        if (newRefCount == 0) {
             free();
         }
     }
